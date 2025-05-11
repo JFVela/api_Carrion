@@ -10,10 +10,10 @@ class conexionn
 
     public static function obtenerConexion()
     {
-        $servername = getenv('DB_HOST');
-        $database = getenv('DB_NAME');
-        $username = getenv('DB_USER');
-        $password = getenv('DB_PASS');
+        $servername = $_ENV['DB_HOST'];
+        $database = $_ENV['DB_NAME'];
+        $username = $_ENV['DB_USER'];
+        $password = $_ENV['DB_PASS'];
 
 
         $con = new mysqli($servername, $username, $password, $database);
