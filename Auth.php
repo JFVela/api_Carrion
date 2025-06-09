@@ -48,11 +48,25 @@ if ($result->num_rows === 1) {
 
     if (password_verify($password, $user['contrasenia'])) {
 
-        $stmt1 = $conn->prepare("SELECT a.nombre, a.apellido1, a.apellido2, r.nombre AS rol FROM alumnos a JOIN usuarios u ON a.id_usuario = u.id JOIN roles r ON u.id_rol = r.id WHERE u.usuario = ?");
-        $stmt1->bind_param("s", $usuario);
-        $stmt1->execute();
-        $result1 = $stmt1->get_result();
-        $datos=$result1->fetch_assoc();
+        if ($user['id_rol'] == 1) {
+            $stmt1 = $conn->prepare("SELECT a.nombre, a.apellido1, a.apellido2, r.nombre AS rol FROM administradores a JOIN usuarios u ON a.id_usuario = u.id JOIN roles r ON u.id_rol = r.id WHERE u.usuario = ?");
+            $stmt1->bind_param("s", $usuario);
+            $stmt1->execute();
+            $result1 = $stmt1->get_result();
+            $datos = $result1->fetch_assoc();
+        } else if ($user['id_rol'] == 2) {
+            $stmt1 = $conn->prepare("SELECT a.nombre, a.apellido1, a.apellido2, r.nombre AS rol FROM profesores a JOIN usuarios u ON a.id_usuario = u.id JOIN roles r ON u.id_rol = r.id WHERE u.usuario = ?");
+            $stmt1->bind_param("s", $usuario);
+            $stmt1->execute();
+            $result1 = $stmt1->get_result();
+            $datos = $result1->fetch_assoc();
+        } else {
+            $stmt1 = $conn->prepare("SELECT a.nombre, a.apellido1, a.apellido2, r.nombre AS rol FROM alumnos a JOIN usuarios u ON a.id_usuario = u.id JOIN roles r ON u.id_rol = r.id WHERE u.usuario = ?");
+            $stmt1->bind_param("s", $usuario);
+            $stmt1->execute();
+            $result1 = $stmt1->get_result();
+            $datos = $result1->fetch_assoc();
+        }
 
 
         $payload = [
@@ -60,9 +74,9 @@ if ($result->num_rows === 1) {
             'exp' => time() + (60 * 60),
             'data' => [
                 "usuario" => $user['usuario'],
-                "nombre"=>$datos['nombre'],
-                "apellido1"=>$datos['apellido1'],
-                "apellido2"=>$datos['apellido2'],
+                "nombre" => $datos['nombre'],
+                "apellido1" => $datos['apellido1'],
+                "apellido2" => $datos['apellido2'],
                 "rol" => $datos['rol']
             ]
         ];
