@@ -1,27 +1,113 @@
 <?php
-include '../../conexion.php';
-header('Content-Type: application/json');
+require_once '../../vendor/autoload.php'; // Ruta a autoload, ajusta según tu estructura
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+include '../../conexionn.php';
+include '../../validartoken.php';
+header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+// Manejo de preflight (CORS)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit(); // Muy importante para que no continúe ejecutando el script
+}
+$key = $_ENV['JWT_KEY'];
+
+// 🔒 Validar token JWT
+$headers = apache_request_headers();
+if (!isset($headers['Authorization'])) {
+    http_response_code(401);
+    echo json_encode(["error" => "Token no proporcionado"]);
+    exit;
+}
+
+$token = str_replace('Bearer ', '', $headers['Authorization']);
+$claveSecreta = $_ENV['JWT_KEY']; // Usa la misma que usas al generarlo
+
+try {
+    $decoded = JWT::decode($token, new Key($claveSecreta, 'HS256'));
+
+    // ✅ El token es válido, continúa
+} catch (\Firebase\JWT\ExpiredException $e) {
+    http_response_code(401);
+    echo json_encode(["error" => "Token expirado"]);
+    exit;
+} catch (Exception $e) {
+    http_response_code(401);
+    echo json_encode(["error" => "Token inválido"]);
+    exit;
+}
+
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if (!empty($data['nombre']) && !empty($data['apellido1']) && !empty($data['apellido2'])) {
+    $conn = conexionn::obtenerConexion();
+
+if (
+    !empty($data['nombre']) &&
+    !empty($data['apellido1']) &&
+    !empty($data['apellido2']) &&
+    !empty($data['gradoSeccion']) &&
+    !empty($data['sede'])
+) {
     $nombre = $conn->real_escape_string($data['nombre']);
     $apellido1 = $conn->real_escape_string($data['apellido1']);
     $apellido2 = $conn->real_escape_string($data['apellido2']);
+    $id_grado = $conn->real_escape_string($data['gradoSeccion']);
+    $id_sede = $conn->real_escape_string($data['sede']);
 
-    $sql = "INSERT INTO `control_academico`.`alumnos` (`nombre`, `apellido1`, `apellido2`) VALUES ('$nombre', '$apellido1', '$apellido2')";
-    
-    if ($conn->query($sql) === TRUE) {
-        echo json_encode(["mensaje" => "Alumno agregado correctamente"]);
-    } else {
-        echo json_encode(["error" => "Error al agregar el alumno: " . $conn->error]);
-    }
-} else {
-    echo json_encode(["error" => "Datos incompletos"]);
+// Función para generar username (iniciales de apellidos + nombre completo)
+    function generarUsername($apellido1, $apellido2, $nombre)
+{
+    $iniciales = strtolower(substr($apellido1, 0, 1) . substr($apellido2, 0, 1));
+    $nombreSinEspacios = strtolower(str_replace(' ', '', $nombre));
+    return $iniciales . $nombreSinEspacios;
 }
 
+    $username = generarUsername($apellido1, $apellido2, $nombre);
+    $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
+
+    $conn->begin_transaction();
+
+    try {
+        // Insertar usuario
+        $stmtUser = $conn->prepare("INSERT INTO usuarios (usuario, contrasenia,id_rol) VALUES (?, ?,3)");
+        if (!$stmtUser)
+            throw new Exception("Error preparando consulta usuarios: " . $conn->error);
+
+        $stmtUser->bind_param("ss", $username, $passwordDefault);
+        if (!$stmtUser->execute())
+            throw new Exception("Error ejecutando consulta usuarios: " . $stmtUser->error);
+
+        $id_usuario = $conn->insert_id;
+        $stmtUser->close();
+
+        // Insertar alumno
+        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (nombre, apellido1, apellido2, id_usuario, id_grado, id_sede) VALUES (?, ?, ?, ?, ?, ?)");
+        if (!$stmtAlumno)
+            throw new Exception("Error preparando consulta alumnos: " . $conn->error);
+
+        $stmtAlumno->bind_param("sssiii", $nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede);
+        if (!$stmtAlumno->execute())
+            throw new Exception("Error ejecutando consulta alumnos: " . $stmtAlumno->error);
+
+        $stmtAlumno->close();
+
+        $conn->commit();
+
+        echo json_encode([
+            'mensaje' => 'Alumno y usuario creados correctamente',
+            'username' => $username,
+            'id_usuario' => $id_usuario
+        ]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+}
 $conn->close();
 ?>
