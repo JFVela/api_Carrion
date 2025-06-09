@@ -3,7 +3,6 @@ require_once '../../vendor/autoload.php'; // Ruta a autoload, ajusta según tu e
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 include '../../conexionn.php';
-include '../../validartoken.php';
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
