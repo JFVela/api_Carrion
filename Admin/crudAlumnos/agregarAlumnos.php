@@ -45,27 +45,21 @@ $data = json_decode(file_get_contents("php://input"), true);
     $conn = conexionn::obtenerConexion();
 
 if (
+    !empty($data['dni']) &&
     !empty($data['nombre']) &&
     !empty($data['apellido1']) &&
     !empty($data['apellido2']) &&
     !empty($data['gradoSeccion']) &&
     !empty($data['sede'])
 ) {
+    $dni = $conn->real_escape_string($data['dni']);
     $nombre = $conn->real_escape_string($data['nombre']);
     $apellido1 = $conn->real_escape_string($data['apellido1']);
     $apellido2 = $conn->real_escape_string($data['apellido2']);
     $id_grado = $conn->real_escape_string($data['gradoSeccion']);
     $id_sede = $conn->real_escape_string($data['sede']);
 
-// Función para generar username (iniciales de apellidos + nombre completo)
-    function generarUsername($apellido1, $apellido2, $nombre)
-{
-    $iniciales = strtolower(substr($apellido1, 0, 1) . substr($apellido2, 0, 1));
-    $nombreSinEspacios = strtolower(str_replace(' ', '', $nombre));
-    return $iniciales . $nombreSinEspacios;
-}
 
-    $username = generarUsername($apellido1, $apellido2, $nombre);
     $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
 
     $conn->begin_transaction();
@@ -76,7 +70,7 @@ if (
         if (!$stmtUser)
             throw new Exception("Error preparando consulta usuarios: " . $conn->error);
 
-        $stmtUser->bind_param("ss", $username, $passwordDefault);
+        $stmtUser->bind_param("ss", $dni, $passwordDefault);
         if (!$stmtUser->execute())
             throw new Exception("Error ejecutando consulta usuarios: " . $stmtUser->error);
 
@@ -84,11 +78,11 @@ if (
         $stmtUser->close();
 
         // Insertar alumno
-        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (nombre, apellido1, apellido2, id_usuario, id_grado, id_sede) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (dni,nombre, apellido1, apellido2, id_usuario, id_grado, id_sede) VALUES (?, ?, ?, ?, ?, ?)");
         if (!$stmtAlumno)
             throw new Exception("Error preparando consulta alumnos: " . $conn->error);
 
-        $stmtAlumno->bind_param("sssiii", $nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede);
+        $stmtAlumno->bind_param("ssssiii", $dni,$nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede);
         if (!$stmtAlumno->execute())
             throw new Exception("Error ejecutando consulta alumnos: " . $stmtAlumno->error);
 
