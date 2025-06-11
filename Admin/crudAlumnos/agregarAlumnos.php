@@ -49,14 +49,14 @@ if (
     !empty($data['nombre']) &&
     !empty($data['apellido1']) &&
     !empty($data['apellido2']) &&
-    !empty($data['gradoSeccion']) &&
+    !empty($data['grado']) &&
     !empty($data['sede'])
 ) {
     $dni = $conn->real_escape_string($data['dni']);
     $nombre = $conn->real_escape_string($data['nombre']);
     $apellido1 = $conn->real_escape_string($data['apellido1']);
     $apellido2 = $conn->real_escape_string($data['apellido2']);
-    $id_grado = $conn->real_escape_string($data['gradoSeccion']);
+    $id_grado = $conn->real_escape_string($data['grado']);
     $id_sede = $conn->real_escape_string($data['sede']);
 
 
@@ -78,11 +78,11 @@ if (
         $stmtUser->close();
 
         // Insertar alumno
-        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (dni,nombre, apellido1, apellido2, id_usuario, id_grado, id_sede) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (nombre, apellido1, apellido2, id_usuario, id_grado, id_sede,dni) VALUES (?, ?, ?, ?, ?, ?,?)");
         if (!$stmtAlumno)
             throw new Exception("Error preparando consulta alumnos: " . $conn->error);
 
-        $stmtAlumno->bind_param("ssssiii", $dni,$nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede);
+        $stmtAlumno->bind_param("sssiiis", $nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede,$dni);
         if (!$stmtAlumno->execute())
             throw new Exception("Error ejecutando consulta alumnos: " . $stmtAlumno->error);
 
@@ -92,7 +92,7 @@ if (
 
         echo json_encode([
             'mensaje' => 'Alumno y usuario creados correctamente',
-            'username' => $username,
+            'username' => $dni,
             'id_usuario' => $id_usuario
         ]);
 

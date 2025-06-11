@@ -43,14 +43,16 @@ if (
     !empty($data['dni']) &&
     !empty($data['nombre']) &&
     !empty($data['apellido1']) &&
-    !empty($data['apellido2'])
+    !empty($data['apellido2']) &&
+    !empty($data['id_sede']) // Asegúrate de que se envíe id_sede
 ) {
     $dni = $conn->real_escape_string($data['dni']);
     $nombre = $conn->real_escape_string($data['nombre']);
     $apellido1 = $conn->real_escape_string($data['apellido1']);
     $apellido2 = $conn->real_escape_string($data['apellido2']);
+    $id_sede = (int) $data['id_sede'];
 
-    // Contraseña por defecto ya hasheada (por seguridad)
+    // Contraseña por defecto ya hasheada
     $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
 
     $conn->begin_transaction();
@@ -68,12 +70,12 @@ if (
         $id_usuario = $conn->insert_id;
         $stmtUser->close();
 
-        // Insertar profesor
-        $stmtProfesor = $conn->prepare("INSERT INTO profesores (dni, nombre, apellido1, apellido2, id_usuario) VALUES (?, ?, ?, ?, ?)");
+        // Insertar profesor con id_sede
+        $stmtProfesor = $conn->prepare("INSERT INTO profesores (dni, nombre, apellido1, apellido2, id_sede, id_usuario) VALUES (?, ?, ?, ?, ?, ?)");
         if (!$stmtProfesor)
             throw new Exception("Error preparando consulta profesores: " . $conn->error);
 
-        $stmtProfesor->bind_param("ssssi", $dni, $nombre, $apellido1, $apellido2, $id_usuario);
+        $stmtProfesor->bind_param("ssssii", $dni, $nombre, $apellido1, $apellido2, $id_sede, $id_usuario);
         if (!$stmtProfesor->execute())
             throw new Exception("Error ejecutando consulta profesores: " . $stmtProfesor->error);
 
@@ -92,7 +94,7 @@ if (
     }
 } else {
     http_response_code(400);
-    echo json_encode(['error' => 'Faltan datos requeridos']);
+    echo json_encode(['error' => 'Faltan datos requeridos (dni, nombre, apellido1, apellido2, id_sede)']);
 }
 
 $conn->close();
