@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Validación de token
+// Validar token
 $headers = apache_request_headers();
 if (!isset($headers['Authorization'])) {
     http_response_code(401);
@@ -38,29 +38,42 @@ try {
     exit;
 }
 
-// Obtener ID desde la URL
-$uri = explode('/', $_SERVER['REQUEST_URI']);
-$id = end($uri);
+// Obtener DNI desde la query string
+if (!isset($_GET['id'])) {
+    http_response_code(400);
+    echo json_encode(["error" => "DNI no proporcionado"]);
+    exit;
+}
+
+$dni = $_GET['id'];
 
 // Obtener datos del body
 $data = json_decode(file_get_contents("php://input"), true);
 $nombre = $data['nombre'] ?? '';
 $apellido1 = $data['apellido1'] ?? '';
 $apellido2 = $data['apellido2'] ?? '';
-$sede_id = $data['sede_id'] ?? '';
+$sede_id = $data['sede'] ?? '';
 
-// Validación de datos
-if ($nombre && $apellido1 && $apellido2 && $sede_id && is_numeric($id)) {
+// Validación
+if ($nombre && $apellido1 && $apellido2 && $sede_id) {
+    $conn = conexionn::obtenerConexion();
+
+    if ($conn->connect_error) {
+        http_response_code(500);
+        echo json_encode(["error" => "Conexión fallida: " . $conn->connect_error]);
+        exit;
+    }
+
     $stmt = $conn->prepare("UPDATE control_academico.alumnos 
-        SET nombre = ?, apellido1 = ?, apellido2 = ?, sede_id = ?
-        WHERE id = ?");
-    
+                            SET nombre = ?, apellido1 = ?, apellido2 = ?, id_sede = ?
+                            WHERE id = ?");
+
     if (!$stmt) {
         echo json_encode(["error" => "Error preparando consulta: " . $conn->error]);
         exit;
     }
 
-    $stmt->bind_param("sssii", $nombre, $apellido1, $apellido2, $sede_id, $id);
+    $stmt->bind_param("sssii", $nombre, $apellido1, $apellido2, $sede_id, $dni);
 
     if ($stmt->execute()) {
         echo json_encode(["mensaje" => "Alumno actualizado correctamente"]);
@@ -69,9 +82,9 @@ if ($nombre && $apellido1 && $apellido2 && $sede_id && is_numeric($id)) {
     }
 
     $stmt->close();
+    $conn->close();
 } else {
-    echo json_encode(["error" => "Datos incompletos o ID inválido"]);
+    http_response_code(400);
+    echo json_encode(["error" => "Datos incompletos"]);
 }
-
-$conn->close();
 ?>

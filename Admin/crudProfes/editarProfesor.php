@@ -49,7 +49,7 @@ $id_usuario = intval($_GET['id']);
 $data = json_decode(file_get_contents("php://input"), true);
 
 // Validar campos obligatorios
-$campos = ['nombre', 'apellido1', 'apellido2', 'id_sede', 'telefono', 'direccion', 'email'];
+$campos = ['nombre', 'apellido1', 'apellido2', 'telefono', 'direccion', 'email'];
 foreach ($campos as $campo) {
     if (!isset($data[$campo])) {
         http_response_code(400);
@@ -62,7 +62,6 @@ foreach ($campos as $campo) {
 $nombre = $data['nombre'];
 $apellido1 = $data['apellido1'];
 $apellido2 = $data['apellido2'];
-$id_sede = $data['id_sede'];
 $telefono = $data['telefono'];
 $direccion = $data['direccion'];
 $email = $data['email'];
@@ -77,7 +76,7 @@ if ($conn->connect_error) {
 
 // Preparar consulta
 $stmt = $conn->prepare("UPDATE profesores 
-    SET nombre = ?, apellido1 = ?, apellido2 = ?, id_sede = ?, telefono = ?, direccion = ?, email = ?
+    SET nombre = ?, apellido1 = ?, apellido2 = ?, telefono = ?, direccion = ?, email = ?
     WHERE id = ?");
 
 if (!$stmt) {
@@ -86,7 +85,7 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param("sssisssi", $nombre, $apellido1, $apellido2, $id_sede, $telefono, $direccion, $email, $id_usuario);
+$stmt->bind_param("ssssssi", $nombre, $apellido1, $apellido2,$telefono, $direccion, $email, $id_usuario);
 
 if ($stmt->execute()) {
     echo json_encode(["mensaje" => "Profesor actualizado correctamente"]);
