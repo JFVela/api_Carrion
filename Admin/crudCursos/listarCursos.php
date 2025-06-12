@@ -46,7 +46,7 @@ if ($conn->connect_error) {
 }
 
 // Consulta
-$sql = "SELECT id, nombre FROM cursos ORDER BY id ASC";
+$sql = "SELECT id, nombre, nivel, area FROM cursos ORDER BY id ASC";
 $resultado = $conn->query($sql);
 
 $datos = [];

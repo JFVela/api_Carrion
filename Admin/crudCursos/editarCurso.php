@@ -37,18 +37,24 @@ try {
     exit;
 }
 
-// Leer datos del body
-$data = json_decode(file_get_contents("php://input"), true);
-
-if (!isset($data['id']) || !isset($data['nombre'])) {
+// Leer ID desde la URL
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     http_response_code(400);
-    echo json_encode(["error" => "ID y nombre son requeridos"]);
+    echo json_encode(["error" => "ID del curso no proporcionado o inválido"]);
     exit;
 }
+$id = intval($_GET['id']);
 
-$id = intval($data['id']);
+// Leer datos del body
+$data = json_decode(file_get_contents("php://input"), true);
+if (!isset($data['nombre'])) {
+    http_response_code(400);
+    echo json_encode(["error" => "El nombre es requerido"]);
+    exit;
+}
 $nombre = $data['nombre'];
 
+// Conexión
 $conn = conexionn::obtenerConexion();
 if ($conn->connect_error) {
     http_response_code(500);
