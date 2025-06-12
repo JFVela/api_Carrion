@@ -55,6 +55,8 @@ $sql = "SELECT
     p.apellido1,
     p.apellido2,
     p.dni,
+    p.email,
+    p.telefono,
     s.nombre AS sede
 FROM profesores p
 JOIN sedes s ON p.id_sede = s.id

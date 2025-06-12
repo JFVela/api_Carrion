@@ -55,6 +55,7 @@ if ($conn->connect_error) {
 // Ejecutar consulta
 $sql = "SELECT 
     a.id,
+    a.dni,
     a.nombre,
     a.apellido1,
     a.apellido2,

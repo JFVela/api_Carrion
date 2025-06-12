@@ -41,16 +41,21 @@ $conn = conexionn::obtenerConexion();
 
 if (
     !empty($data['dni']) &&
-    !empty($data['nombre']) &&
-    !empty($data['apellido1']) &&
-    !empty($data['apellido2']) &&
-    !empty($data['id_sede']) // Asegúrate de que se envíe id_sede
+    !empty($data['nombreDocente']) &&
+    !empty($data['apellidoPaterno']) &&
+    !empty($data['apellidoMaterno']) &&
+    !empty($data['telefono']) &&
+    !empty($data['direccion']) &&
+    !empty($data['correoElectronico'])
 ) {
     $dni = $conn->real_escape_string($data['dni']);
-    $nombre = $conn->real_escape_string($data['nombre']);
-    $apellido1 = $conn->real_escape_string($data['apellido1']);
-    $apellido2 = $conn->real_escape_string($data['apellido2']);
-    $id_sede = (int) $data['id_sede'];
+    $nombre = $conn->real_escape_string($data['nombreDocente']);
+    $apellido1 = $conn->real_escape_string($data['apellidoPaterno']);
+    $apellido2 = $conn->real_escape_string($data['apellidoMaterno']);
+ //   $id_sede = (int) $data['id_sede'];
+    $telefono = (int) $data['telefono'];
+    $direccion = $conn->real_escape_string($data['direccion']);
+    $email = $conn->real_escape_string($data['correoElectronico']);
 
     // Contraseña por defecto ya hasheada
     $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
@@ -70,12 +75,16 @@ if (
         $id_usuario = $conn->insert_id;
         $stmtUser->close();
 
-        // Insertar profesor con id_sede
-        $stmtProfesor = $conn->prepare("INSERT INTO profesores (dni, nombre, apellido1, apellido2, id_sede, id_usuario) VALUES (?, ?, ?, ?, ?, ?)");
+        // Insertar profesor con datos adicionales
+        $stmtProfesor = $conn->prepare("
+            INSERT INTO profesores (
+                dni, nombre, apellido1, apellido2, id_sede, id_usuario, telefono, direccion, email
+            ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ");
         if (!$stmtProfesor)
             throw new Exception("Error preparando consulta profesores: " . $conn->error);
 
-        $stmtProfesor->bind_param("ssssii", $dni, $nombre, $apellido1, $apellido2, $id_sede, $id_usuario);
+        $stmtProfesor->bind_param("ssssiiss", $dni, $nombre, $apellido1, $apellido2, $id_usuario, $telefono, $direccion, $email);
         if (!$stmtProfesor->execute())
             throw new Exception("Error ejecutando consulta profesores: " . $stmtProfesor->error);
 
@@ -94,7 +103,7 @@ if (
     }
 } else {
     http_response_code(400);
-    echo json_encode(['error' => 'Faltan datos requeridos (dni, nombre, apellido1, apellido2, id_sede)']);
+    echo json_encode(['error' => 'Faltan datos requeridos (dni, nombre, apellido1, apellido2, id_sede, telefono, direccion, email)']);
 }
 
 $conn->close();
