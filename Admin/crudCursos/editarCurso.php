@@ -47,12 +47,12 @@ $id = intval($_GET['id']);
 
 // Leer datos del body
 $data = json_decode(file_get_contents("php://input"), true);
-if (!isset($data['nombre'])) {
+if (!isset($data['nombreCurso'])) {
     http_response_code(400);
     echo json_encode(["error" => "El nombre es requerido"]);
     exit;
 }
-$nombre = $data['nombre'];
+$nombre = $data['nombreCurso'];
 
 // Conexión
 $conn = conexionn::obtenerConexion();
