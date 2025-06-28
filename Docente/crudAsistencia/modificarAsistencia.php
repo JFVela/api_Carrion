@@ -20,7 +20,7 @@ $headers = apache_request_headers();
 if (!isset($headers['Authorization'])) {
     http_response_code(401);
     echo json_encode(["error" => "Token no proporcionado"]);
-    exit;
+    exit();
 }
 
 $token = str_replace('Bearer ', '', $headers['Authorization']);
@@ -31,23 +31,42 @@ try {
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(["error" => "Token inválido"]);
-    exit;
+    exit();
 }
 
 $data = json_decode(file_get_contents("php://input"), true);
 $fecha = date("Y-m-d");
 $conn = conexionn::obtenerConexion();
 
+$actualizados = 0;
+
 foreach ($data as $asistencia) {
     $alumnoId = $asistencia['id'];
     $estado = $asistencia['estado'];
     $observacion = $asistencia['observaciones'] ?? null;
 
+    // Corregido: alumno_id es entero, por eso debe ser "ssii" no "ssis"
     $stmtUpdate = $conn->prepare("UPDATE asistencia SET estado = ?, observaciones = ? WHERE alumno_id = ? AND DATE(fecha) = ?");
-    $stmtUpdate->bind_param("ssis", $estado, $observacion, $alumnoId, $fecha);
-    $stmtUpdate->execute();
+    $stmtUpdate->bind_param("ssii", $estado, $observacion, $alumnoId, $fecha);
+
+    if ($stmtUpdate->execute()) {
+        if ($stmtUpdate->affected_rows > 0) {
+            $actualizados++;
+        }
+    }
     $stmtUpdate->close();
 }
 
-echo json_encode(["mensaje" => "Asistencia actualizada correctamente"]);
+if ($actualizados > 0) {
+    echo json_encode([
+        "mensaje" => "Asistencia actualizada correctamente",
+        "actualizados" => $actualizados
+    ]);
+} else {
+    echo json_encode([
+        "error" => "No se pudo actualizar ningún registro",
+        "fecha" => $fecha
+    ]);
+}
+
 $conn->close();
