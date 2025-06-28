@@ -1,5 +1,6 @@
 <?php
-require_once '../../vendor/autoload.php'; // Ruta a autoload, ajusta según tu estructura
+require_once '../../vendor/autoload.php';
+
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
@@ -10,15 +11,13 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-
-// Manejo de preflight (CORS)
+// Preflight CORS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit(); // Muy importante para que no continúe ejecutando el script
+    exit();
 }
 
-
-// 🔒 Validar token JWT
+// Validar JWT
 $headers = apache_request_headers();
 if (!isset($headers['Authorization'])) {
     http_response_code(401);
@@ -27,12 +26,10 @@ if (!isset($headers['Authorization'])) {
 }
 
 $token = str_replace('Bearer ', '', $headers['Authorization']);
-$claveSecreta = $_ENV['JWT_KEY']; // Usa la misma que usas al generarlo
+$claveSecreta = $_ENV['JWT_KEY'];
 
 try {
     $decoded = JWT::decode($token, new Key($claveSecreta, 'HS256'));
-
-    // ✅ El token es válido, continúa
 } catch (\Firebase\JWT\ExpiredException $e) {
     http_response_code(401);
     echo json_encode(["error" => "Token expirado"]);
@@ -42,33 +39,32 @@ try {
     echo json_encode(["error" => "Token inválido"]);
     exit;
 }
-// Obtener conexión
-$conn = conexionn::obtenerConexion();
 
-// Verificar si la conexión fue exitosa
+// Conexión
+$conn = conexionn::obtenerConexion();
 if ($conn->connect_error) {
     http_response_code(500);
     echo json_encode(["error" => "Conexión fallida: " . $conn->connect_error]);
     exit;
 }
 
-// Ejecutar consulta
+// Consulta con JOIN para mostrar nombres legibles
 $sql = "SELECT 
-    a.id,
-    a.dni,
-    a.nombre,
-    a.apellido1,
-    a.apellido2,
-    a.correo,
-    CONCAT(g.nombre, ' - ', n.nombre) AS grado,
-    s.nombre AS sede
-FROM alumnos a
-JOIN grados g ON a.id_grado = g.id
-JOIN niveles n ON g.id_nivel = n.id
-JOIN sedes s ON a.id_sede = s.id order by id asc";
+    n.id,
+    n.mensaje,
+    n.hora_notificacion,
+    n.emisor_tipo,
+    CONCAT(a.nombre, ' ', a.apellido1, ' ', a.apellido2) AS alumno,
+    CASE 
+        WHEN n.emisor_tipo = 'PROFESOR' THEN (SELECT CONCAT(nombre, ' ', apellido1) FROM profesores WHERE id = n.emisor_id)
+        WHEN n.emisor_tipo = 'ADMIN' THEN (SELECT CONCAT(nombre, ' ', apellido1) FROM administradores WHERE id = n.emisor_id)
+        ELSE 'Desconocido'
+    END AS emisor
+FROM notificaciones n
+JOIN alumnos a ON n.alumno_id = a.id
+ORDER BY n.hora_notificacion DESC";
 
 $resultado = $conn->query($sql);
-
 $datos = [];
 
 if ($resultado) {
@@ -81,5 +77,4 @@ if ($resultado) {
     echo json_encode(["error" => "Error en la consulta: " . $conn->error]);
 }
 
-// Cerrar conexión
 $conn->close();

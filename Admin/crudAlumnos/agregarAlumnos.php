@@ -39,10 +39,9 @@ try {
     exit;
 }
 
-
 $data = json_decode(file_get_contents("php://input"), true);
 
-    $conn = conexionn::obtenerConexion();
+$conn = conexionn::obtenerConexion();
 
 if (
     !empty($data['dni']) &&
@@ -50,7 +49,8 @@ if (
     !empty($data['apellido1']) &&
     !empty($data['apellido2']) &&
     !empty($data['grado']) &&
-    !empty($data['sede'])
+    !empty($data['sede']) &&
+    !empty($data['correo'])
 ) {
     $dni = $conn->real_escape_string($data['dni']);
     $nombre = $conn->real_escape_string($data['nombre']);
@@ -58,7 +58,7 @@ if (
     $apellido2 = $conn->real_escape_string($data['apellido2']);
     $id_grado = $conn->real_escape_string($data['grado']);
     $id_sede = $conn->real_escape_string($data['sede']);
-
+    $correo = $conn->real_escape_string($data['correo']);
 
     $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
 
@@ -77,12 +77,12 @@ if (
         $id_usuario = $conn->insert_id;
         $stmtUser->close();
 
-        // Insertar alumno
-        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (nombre, apellido1, apellido2, id_usuario, id_grado, id_sede,dni) VALUES (?, ?, ?, ?, ?, ?,?)");
+        // Insertar alumno (ahora con correo)
+        $stmtAlumno = $conn->prepare("INSERT INTO alumnos (nombre, apellido1, apellido2, id_usuario, id_grado, id_sede, dni, correo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         if (!$stmtAlumno)
             throw new Exception("Error preparando consulta alumnos: " . $conn->error);
 
-        $stmtAlumno->bind_param("sssiiis", $nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede,$dni);
+        $stmtAlumno->bind_param("sssiiiss", $nombre, $apellido1, $apellido2, $id_usuario, $id_grado, $id_sede, $dni, $correo);
         if (!$stmtAlumno->execute())
             throw new Exception("Error ejecutando consulta alumnos: " . $stmtAlumno->error);
 
