@@ -42,6 +42,9 @@ foreach ($data as $asistencia) {
     $alumnoId = $asistencia['id'];
     $estado = $asistencia['estado'];
     $observacion = $asistencia['observaciones'] ?? null;
+    $id_nivel=$asistencia['id_nivel'];
+    $id_grado=$asistencia['id_grado'];
+    $id_sede=$asistencia['id_sede'];
 
     // Validar si ya existe asistencia para hoy
     $stmtCheck = $conn->prepare("SELECT id FROM asistencia WHERE alumno_id = ? AND DATE(fecha) = ?");
@@ -51,8 +54,8 @@ foreach ($data as $asistencia) {
 
     if ($stmtCheck->num_rows > 0) continue; // ya existe
 
-    $stmtInsert = $conn->prepare("INSERT INTO asistencia (alumno_id, fecha, estado, observaciones) VALUES (?, NOW(), ?, ?)");
-    $stmtInsert->bind_param("iss", $alumnoId, $estado, $observacion);
+    $stmtInsert = $conn->prepare("INSERT INTO asistencia (alumno_id, fecha, estado, observaciones,id_nivel,id_grado,id_sede) VALUES (?, NOW(), ?, ?,?,?,?)");
+    $stmtInsert->bind_param("issiii", $alumnoId, $estado, $observacion,$id_nivel,$id_grado,$id_sede);
     $stmtInsert->execute();
     $stmtInsert->close();
     $stmtCheck->close();
