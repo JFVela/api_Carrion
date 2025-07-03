@@ -53,7 +53,9 @@ SELECT
   g.nombre                AS nombre_grado,
   g.id_nivel              AS id_nivel,
   n.nombre                AS nombre_nivel,
-  CONCAT(g.nombre, ' - ', n.nombre) AS salon
+  CONCAT(g.nombre, ' - ', n.nombre) AS salon,
+  CONCAT(p.nombre, ' ', p.apellido1) AS nombres_profe
+
 FROM clases c
 LEFT JOIN profesores p ON p.id      = c.profesor_id
 LEFT JOIN cursos     cu ON cu.id     = c.curso_id
