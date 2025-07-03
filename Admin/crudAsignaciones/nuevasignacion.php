@@ -4,7 +4,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 include '../../conexionn.php';
 
-/* Cabeceras CORS */
+// 1. CORS y JSON
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -14,83 +14,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-/* Validar JWT */
-$hdrs      = apache_request_headers();
-$auth      = $hdrs['Authorization'] ?? $hdrs['authorization'] ?? null;
-if (!$auth) {
+// 2. Validar JWT
+$hdrs = function_exists('apache_request_headers') ? apache_request_headers() : getallheaders();
+$auth = $hdrs['Authorization'] ?? $hdrs['authorization'] ?? null;
+if (!$auth || !preg_match('/^Bearer\s+(.+)$/', $auth, $m)) {
     http_response_code(401);
-    echo json_encode(["error"=>"Token no proporcionado"]);
+    echo json_encode(["error" => "Token no proporcionado"]);
     exit;
 }
-$token = str_replace('Bearer ', '', $auth);
+$token = $m[1];
 try {
     JWT::decode($token, new Key($_ENV['JWT_KEY'], 'HS256'));
 } catch (\Throwable $e) {
     http_response_code(401);
-    echo json_encode(["error"=>"Token inválido o expirado"]);
+    echo json_encode(["error" => "Token inválido o expirado"]);
     exit;
 }
 
-/* Conexión */
+// 3. Conexión a la base de datos
 $conn = conexionn::obtenerConexion();
 if ($conn->connect_error) {
     http_response_code(500);
-    echo json_encode(["error"=>"Conexión fallida: {$conn->connect_error}"]);
+    echo json_encode(["error" => "Conexión fallida: {$conn->connect_error}"]);
     exit;
 }
-
-// Activar excepciones en mysqli
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-/* Leer JSON */
-$input       = json_decode(file_get_contents('php://input'), true);
-$curso_id    = $input['curso_id']    ?? null;
-$profesor_id = $input['profesor_id'] ?? null;
-$grado_id    = $input['grado_id']    ?? null;
-$aula_id     = $input['aula_id']     ?? null;
-$anio        = $input['anio']        ?? null;
-if (!$curso_id || !$profesor_id || !$grado_id || !$aula_id || !$anio) {
+// 4. Leer y decodificar JSON
+$raw   = file_get_contents('php://input');
+$input = json_decode($raw, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
     http_response_code(400);
-    echo json_encode(["error"=>"Faltan campos obligatorios"]);
+    echo json_encode(["error" => "JSON inválido"]);
     exit;
 }
 
+// 5. Validar campos
+$id_curso    = filter_var($input['id_curso']    ?? null, FILTER_VALIDATE_INT);
+$id_profesor = filter_var($input['id_profesor'] ?? null, FILTER_VALIDATE_INT);
+$id_grado    = filter_var($input['id_grado']    ?? null, FILTER_VALIDATE_INT);
+$id_aula     = filter_var($input['id_grado']     ?? null, FILTER_VALIDATE_INT);
+
+$fields = [
+    'id_curso'    => $id_curso,
+    'id_profesor' => $id_profesor,
+    'id_grado'    => $id_grado,
+    'id_aula'     => $id_aula
+];
+$errors = [];
+foreach ($fields as $name => $val) {
+    if ($val === false || $val === null) {
+        $errors[] = "$name faltante o inválido";
+    }
+}
+if (!empty($errors)) {
+    http_response_code(400);
+    echo json_encode([
+        "error"  => "Validation failed",
+        "fields" => $errors
+    ]);
+    exit;
+}
+
+// 6. Año actual en Lima
+date_default_timezone_set('America/Lima');
+$anio = (int) date('Y');
+
 try {
-    // 1) Iniciar transacción
+    // 7. Transacción e INSERT
     $conn->begin_transaction();
 
-    // 2) Intentar INSERT
-    $sql = "INSERT INTO clases
-              (curso_id, profesor_id, grado_id, aula_id, anio)
-            VALUES (?, ?, ?, ?, ?)";
+    $sql = "
+        INSERT INTO clases
+            (curso_id, profesor_id, grado_id, aula_id, anio)
+        VALUES (?, ?, ?, ?, ?)
+    ";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('iiiii',
-        $curso_id,
-        $profesor_id,
-        $grado_id,
-        $aula_id,
-        $anio
-    );
+    $stmt->bind_param('iiiii', $id_curso, $id_profesor, $id_grado, $id_aula, $anio);
     $stmt->execute();
 
-    // 3) Commit sólo si ejecutó bien
+    $nuevoId = $conn->insert_id;
     $conn->commit();
 
-    // 4) Devolver ID generado
-    $nuevoId = $conn->insert_id;
+    http_response_code(201);
     echo json_encode([
         "mensaje"  => "Clase creada correctamente",
         "id_clase" => $nuevoId
     ]);
 
 } catch (mysqli_sql_exception $e) {
-    // 5) Rollback para que no se consuma el AUTO_INCREMENT
+    // 8. Rollback y manejo de errores
     $conn->rollback();
 
     if ($e->getCode() === 1062) {
         http_response_code(409);
         echo json_encode([
-            "error" => "Ya existe una asignación para ese curso, grado y año"
+            "error" => "El grado ya tiene asignado este curso para el año {$anio}"
         ]);
     } else {
         http_response_code(500);
@@ -100,5 +119,8 @@ try {
     }
 }
 
-$stmt->close();
+// 9. Cierre de recursos
+if (isset($stmt) && $stmt instanceof mysqli_stmt) {
+    $stmt->close();
+}
 $conn->close();
