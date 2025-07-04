@@ -2,6 +2,7 @@
 require_once '../../vendor/autoload.php'; // Ruta a autoload, ajusta según tu estructura
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+
 include '../../conexionn.php';
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
@@ -60,8 +61,8 @@ if (
     $id_sede = $conn->real_escape_string($data['sede']);
     $correo = $conn->real_escape_string($data['correo']);
 
-    $passwordDefault = '$2y$10$YriYbf5Fay0rB/AcN9DkbujmtQo3uPqEPzhbbhUMiSqZvzFx07jdW';
-
+    $passwordDefault = password_hash($dni, PASSWORD_DEFAULT);
+    
     $conn->begin_transaction();
 
     try {
@@ -95,7 +96,6 @@ if (
             'username' => $dni,
             'id_usuario' => $id_usuario
         ]);
-
     } catch (Exception $e) {
         $conn->rollback();
         http_response_code(500);
@@ -103,4 +103,3 @@ if (
     }
 }
 $conn->close();
-?>

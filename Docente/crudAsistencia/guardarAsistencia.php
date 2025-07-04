@@ -42,24 +42,36 @@ foreach ($data as $asistencia) {
     $alumnoId = $asistencia['id'];
     $estado = $asistencia['estado'];
     $observacion = $asistencia['observaciones'] ?? null;
-    $id_nivel=$asistencia['id_nivel'];
-    $id_grado=$asistencia['id_grado'];
-    $id_sede=$asistencia['id_sede'];
 
-    // Validar si ya existe asistencia para hoy
+    // Verificar si ya existe asistencia para el alumno hoy
     $stmtCheck = $conn->prepare("SELECT id FROM asistencia WHERE alumno_id = ? AND DATE(fecha) = ?");
+    if (!$stmtCheck) {
+        echo json_encode(["error" => "Error al preparar verificación: " . $conn->error]);
+        exit;
+    }
     $stmtCheck->bind_param("is", $alumnoId, $fecha);
     $stmtCheck->execute();
     $stmtCheck->store_result();
 
-    if ($stmtCheck->num_rows > 0) continue; // ya existe
+    if ($stmtCheck->num_rows > 0) {
+        $stmtCheck->close();
+        continue;
+    }
 
-    $stmtInsert = $conn->prepare("INSERT INTO asistencia (alumno_id, fecha, estado, observaciones,id_nivel,id_grado,id_sede) VALUES (?, NOW(), ?, ?,?,?,?)");
-    $stmtInsert->bind_param("issiii", $alumnoId, $estado, $observacion,$id_nivel,$id_grado,$id_sede);
+    $stmtCheck->close();
+
+    // Insertar asistencia
+    $stmtInsert = $conn->prepare("INSERT INTO asistencia (alumno_id, fecha, estado, observaciones) VALUES (?, NOW(), ?, ?)");
+    if (!$stmtInsert) {
+        echo json_encode(["error" => "Error al preparar inserción: " . $conn->error]);
+        exit;
+    }
+
+    $stmtInsert->bind_param("iss", $alumnoId, $estado, $observacion);
     $stmtInsert->execute();
     $stmtInsert->close();
-    $stmtCheck->close();
 }
 
 echo json_encode(["mensaje" => "Asistencia guardada correctamente"]);
 $conn->close();
+?>

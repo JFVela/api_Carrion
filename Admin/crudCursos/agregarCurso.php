@@ -42,17 +42,16 @@ $data = json_decode(file_get_contents("php://input"), true);
 $conn = conexionn::obtenerConexion();
 
 // Validar que estén todos los campos requeridos
-if (!empty($data['nombreCurso']) && !empty($data['nivel']) && !empty($data['area'])) {
+if (!empty($data['nombreCurso']) && !empty($data['nivel'])) {
     $nombre = $conn->real_escape_string($data['nombreCurso']);
     $nivel = $conn->real_escape_string($data['nivel']);
-    $area = $conn->real_escape_string($data['area']);
 
     try {
-        $stmt = $conn->prepare("INSERT INTO cursos (nombre, nivel, area) VALUES (?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO cursos (nombre, nivel) VALUES (?, ?)");
         if (!$stmt)
             throw new Exception("Error preparando consulta: " . $conn->error);
 
-        $stmt->bind_param("sss", $nombre, $nivel, $area);
+        $stmt->bind_param("ss", $nombre, $nivel);
         if (!$stmt->execute())
             throw new Exception("Error ejecutando consulta: " . $stmt->error);
 
@@ -70,7 +69,7 @@ if (!empty($data['nombreCurso']) && !empty($data['nivel']) && !empty($data['area
     }
 } else {
     http_response_code(400);
-    echo json_encode(['error' => 'Faltan campos requeridos (nombre, nivel, area)']);
+    echo json_encode(['error' => 'Faltan campos requeridos (nombre, nivel)']);
 }
 
 $conn->close();
